@@ -1,0 +1,52 @@
+# airgap-agent packaging.
+#
+# The core install has NO networking dependencies at all. Each inference
+# runtime is an optional extra, so httpx only ever enters the environment
+# if you explicitly opt into the Ollama backup:
+#
+#   pip install ".[llamacpp]"   # PRIMARY  — in-process, zero sockets
+#   pip install ".[ollama]"     # BACKUP   — loopback-only client
+#   pip install ".[all]"        # both runtimes available
+#
+# Installing from PyPI is intentionally not offered: see README.md. Install
+# from a local checkout, or use the Docker image for airgapped deployment.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "airgap-agent"
+version = "0.0.1"
+description = "A truly air-gapped agent harness — no network access, local-only inference."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+keywords = ["agent", "airgap", "offline", "local-inference", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+# Core has zero third-party dependencies — nothing to audit for egress.
+dependencies = []
+
+[project.optional-dependencies]
+# PRIMARY runtime: in-process llama.cpp. Compiles from source at install.
+llamacpp = ["llama-cpp-python==0.3.2"]
+# BACKUP runtime: loopback-only HTTP client for a local Ollama server.
+ollama = ["httpx==0.27.2"]
+all = ["llama-cpp-python==0.3.2", "httpx==0.27.2"]
+dev = ["pytest==8.3.3"]
+
+[project.scripts]
+airgap-agent = "airgap_agent.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["airgap_agent*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
