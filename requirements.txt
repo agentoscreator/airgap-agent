@@ -1,0 +1,15 @@
+# airgap-agent runtime dependencies — pinned and minimal.
+#
+# Deliberately contains NO general-purpose networking libraries (requests,
+# aiohttp, urllib3, websockets). The only HTTP client is httpx, used
+# EXCLUSIVELY by the Ollama backup backend against loopback (127.0.0.1),
+# and guarded by the loopback assertion in airgap_agent/inference/ollama.py
+# plus the egress test. See SECURITY.md.
+#
+# Installed at BUILD time only. At runtime the container has no network.
+
+# PRIMARY inference runtime (in-process, GGUF; compiles at build time)
+llama-cpp-python==0.3.2
+
+# BACKUP inference client — loopback-only use
+httpx==0.27.2
