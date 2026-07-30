@@ -1,8 +1,10 @@
-# airgap-agent ☤
+# airgap-agent
 
 A truly **air-gapped** agent harness. No network access, local-only inference, no telemetry, no phone-home. This is the next evolution of running a base model with no internet connection (Zephyr on the ISS) — now the *harness itself* is airgapped, not just the model.
 
 Architecturally inspired by [Hermes Agent](https://github.com/nousresearch/hermes-agent), but with the **opposite goal**: where Hermes is designed to live everywhere (Telegram, Discord, cloud VMs, serverless) and reach out to many providers, airgap-agent is designed to reach *nothing*. Isolation is the core invariant, not a config flag.
+
+airgap-agent is an independent project — not affiliated with, endorsed by, or derived from Hermes Agent's source code. We share none of their code, icons, or branding; we only borrow ideas and reimplement them. See [NOTICE](NOTICE).
 
 ## Design goals
 
@@ -46,6 +48,7 @@ tests/
   test_no_egress.py # asserts the harness cannot open a socket
 AGENTS.md
 SECURITY.md
+NOTICE
 ```
 
 ## Status
@@ -54,4 +57,4 @@ Early scaffolding. See `SECURITY.md` for the isolation model and `AGENTS.md` for
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Licensed under the Apache License, Version 2.0 — see [LICENSE](LICENSE). Attribution and project lineage are recorded in [NOTICE](NOTICE).
