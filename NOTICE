@@ -1,0 +1,29 @@
+airgap-agent
+Copyright 2026 The airgap-agent authors
+
+This product is licensed under the Apache License, Version 2.0 (the
+"License"); you may not use this software except in compliance with the
+License. A copy of the License is included in the LICENSE file in this
+repository and is available at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+------------------------------------------------------------------------
+Lineage and attribution
+------------------------------------------------------------------------
+
+airgap-agent is an independent project. It is *architecturally inspired*
+by Hermes Agent (https://github.com/nousresearch/hermes-agent, MIT
+licensed, (c) Nous Research), but it is not affiliated with, endorsed by,
+or derived from the Hermes Agent source code. No Hermes Agent source
+code, icons, logos, favicons, or other assets are included in this
+repository.
+
+Where airgap-agent borrows ideas (the shape of an agent loop, a toolset
+abstraction, local session state), those ideas are reimplemented from
+scratch with a deliberately opposite goal: airgap-agent is designed to be
+incapable of network egress. See README.md and SECURITY.md.
+
+The names "Hermes", "Hermes Agent", and "Nous Research", and any
+associated marks, are the property of their respective owners and are
+used here only for nominative, descriptive reference.
