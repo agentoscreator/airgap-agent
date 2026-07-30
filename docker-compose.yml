@@ -1,0 +1,39 @@
+# airgap-agent — offline run configuration.
+#
+# The container runs with NO network (network_mode: none). Everything it
+# needs is already inside the image; weights are mounted read-only from
+# local disk. Build the image online first (docker build -t airgap-agent .),
+# then run this offline.
+
+services:
+  agent:
+    image: airgap-agent:latest
+    build:
+      context: .
+    # Hard airgap: the container has no network interfaces at all.
+    network_mode: none
+    # Filesystem is read-only except the explicit writable data volume.
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      # llamacpp is PRIMARY. Set RUNTIME=ollama to use the backup.
+      RUNTIME: "${RUNTIME:-llamacpp}"
+      MODEL_PATH: "/models/model.gguf"
+      OLLAMA_HOST: "127.0.0.1"
+      OLLAMA_PORT: "11434"
+    volumes:
+      # Weights: read-only. Point ./models at your local GGUF directory.
+      - ./models:/models:ro
+      # Writable state (SQLite sessions, etc.).
+      - agent-data:/data
+    stdin_open: true
+    tty: true
+    # Drop privileges further; the image already runs as a non-root user.
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  agent-data:
