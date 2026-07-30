@@ -1,0 +1,29 @@
+# Keep the build context tiny and never ship secrets or weights into an
+# image layer by accident.
+
+.git
+.github
+**/__pycache__/
+*.pyc
+*.pyo
+.venv
+venv/
+.env
+*.env
+
+# Model weights are mounted at runtime, not copied into the context.
+# (Uncomment the COPY in the Dockerfile only for a sealed distribution.)
+models/
+*.gguf
+*.bin
+*.safetensors
+
+# Local state / data
+data/
+*.sqlite
+*.db
+
+# Docs and dev cruft not needed in the image
+docs/
+tests/
+*.md
