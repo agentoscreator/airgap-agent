@@ -2,6 +2,12 @@
 
 airgap-agent's single most important property is that it **cannot reach the outside world**. This document describes how that is enforced and how to verify it.
 
+> **Implementation status.** This document describes the *intended* isolation
+> model. Several invariants below are not yet enforced by code: there is no
+> sandbox, no import contract, and no CI. The egress guard tests in
+> `tests/test_no_egress.py` are the only part currently exercised. See
+> [`docs/VERIFIED.md`](docs/VERIFIED.md) for what has actually been run.
+
 ## Threat model
 
 The harness runs untrusted model output and executes tools on behalf of a language model. We assume the model may attempt (or be manipulated into attempting) to exfiltrate data or fetch remote content. The design goal is that even a fully compromised agent loop has **no available egress path**.

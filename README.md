@@ -132,7 +132,7 @@ rather than returning an empty string, and names the remedy.
 
 ## Design goals
 
-- **No egress, ever.** The harness must be *incapable* of outbound network I/O — not merely configured to avoid it. Isolation is enforced structurally (no HTTP client is importable in the agent core, sandboxed subprocesses run with networking disabled) and is verified by tests.
+- **No egress, ever.** The harness must be *incapable* of outbound network I/O — not merely configured to avoid it. Isolation is meant to be structural rather than procedural: no HTTP client importable in the agent core, sandboxed subprocesses with networking disabled. Only the egress guard tests exist today - see [`docs/VERIFIED.md`](docs/VERIFIED.md).
 - **Local-only inference.** Models run on-device. llama.cpp is primary (in-process); a loopback-only Ollama backend is the backup. No hosted API providers, no API keys, no OAuth.
 - **Deterministic, auditable tool surface.** A small, explicit set of tools that touch only the local filesystem and local compute. Every tool declares whether it performs I/O.
 - **Portable state, offline.** Conversation/session state persists locally (SQLite), fully functional with no connectivity.
