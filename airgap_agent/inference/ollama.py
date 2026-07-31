@@ -32,6 +32,24 @@ def _assert_loopback(host: str) -> None:
         )
 
 
+def _think_from_env() -> bool | None:
+    """Reasoning ("thinking") toggle for models that support it.
+
+    Unset  -> omit the field entirely (works with every model).
+    "0"    -> ask the model NOT to think, so the whole token budget goes to
+              the answer instead of a scratchpad.
+    "1"    -> ask the model to think.
+    "auto" -> omit the field, i.e. let the model decide.
+    """
+    raw = os.environ.get("OLLAMA_THINK")
+    if raw is None:
+        return None
+    raw = raw.strip().lower()
+    if raw in {"", "auto", "model"}:
+        return None
+    return raw not in {"0", "false", "no", "off"}
+
+
 class OllamaBackend(InferenceBackend):
     name = "ollama"
 
@@ -41,6 +59,7 @@ class OllamaBackend(InferenceBackend):
         self.port = int(os.environ.get("OLLAMA_PORT", "11434"))
         self.model = model or os.environ.get("OLLAMA_MODEL", "")
         self._base = f"http://{self.host}:{self.port}"
+        self.think = _think_from_env()
         self._client = None
 
     def _ensure_client(self):
@@ -56,46 +75,61 @@ class OllamaBackend(InferenceBackend):
         client = self._ensure_client()
         client.get("/api/tags").raise_for_status()
 
+    def _payload(self, prompt: str, config: GenerationConfig, *, stream: bool) -> dict:
+        body: dict = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": stream,
+            "options": {
+                "num_predict": config.max_tokens,
+                "temperature": config.temperature,
+                "stop": list(config.stop),
+            },
+        }
+        if self.think is not None:
+            body["think"] = self.think
+        return body
+
+    @staticmethod
+    def _explain_empty(data: dict, config: GenerationConfig) -> str:
+        reason = data.get("done_reason")
+        if (data.get("thinking") or "") and reason == "length":
+            return (
+                "Ollama returned no answer: this is a reasoning model and it "
+                f"spent its entire {config.max_tokens}-token budget on the "
+                "hidden 'thinking' field (done_reason='length'). Raise "
+                "max_tokens, or set OLLAMA_THINK=0 to skip reasoning."
+            )
+        return f"Ollama returned an empty response (done_reason={reason!r})."
+
     def generate(self, prompt: str, config: GenerationConfig) -> str:
         client = self._ensure_client()
-        resp = client.post(
-            "/api/generate",
-            json={
-                "model": self.model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {
-                    "num_predict": config.max_tokens,
-                    "temperature": config.temperature,
-                    "stop": list(config.stop),
-                },
-            },
-        )
+        resp = client.post("/api/generate", json=self._payload(prompt, config, stream=False))
         resp.raise_for_status()
-        return resp.json().get("response", "")
+        data = resp.json()
+        text = data.get("response") or ""
+        if not text:
+            # Never hand an agent loop a silent empty string: it would spin.
+            raise RuntimeError(self._explain_empty(data, config))
+        return text
 
     def stream(self, prompt: str, config: GenerationConfig) -> Iterator[str]:
         import json
 
         client = self._ensure_client()
+        emitted = False
+        last: dict = {}
         with client.stream(
-            "POST",
-            "/api/generate",
-            json={
-                "model": self.model,
-                "prompt": prompt,
-                "stream": True,
-                "options": {
-                    "num_predict": config.max_tokens,
-                    "temperature": config.temperature,
-                    "stop": list(config.stop),
-                },
-            },
+            "POST", "/api/generate", json=self._payload(prompt, config, stream=True)
         ) as resp:
             resp.raise_for_status()
             for line in resp.iter_lines():
                 if not line:
                     continue
                 chunk = json.loads(line)
+                last = chunk
                 if chunk.get("response"):
+                    emitted = True
                     yield chunk["response"]
+        if not emitted:
+            raise RuntimeError(self._explain_empty(last, config))
