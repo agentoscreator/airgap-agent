@@ -16,6 +16,7 @@ and the egress test enforces exactly that.
 from __future__ import annotations
 
 import abc
+import os
 from dataclasses import dataclass
 from typing import Iterator
 
@@ -49,9 +50,10 @@ class InferenceBackend(abc.ABC):
         return None
 
 
-def load_backend(runtime: str) -> InferenceBackend:
+def load_backend(runtime: str | None = None) -> InferenceBackend:
     """Factory: pick a backend by name. llamacpp is the default/primary."""
-    runtime = (runtime or "llamacpp").strip().lower()
+    runtime = (runtime or os.environ.get("RUNTIME") or "llamacpp")
+    runtime = runtime.strip().lower()
     if runtime == "llamacpp":
         from .llamacpp import LlamaCppBackend
 
