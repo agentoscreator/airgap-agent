@@ -9,7 +9,7 @@
 # Installed at BUILD time only. At runtime the container has no network.
 
 # PRIMARY inference runtime (in-process, GGUF; compiles at build time)
-llama-cpp-python==0.3.2
+llama-cpp-python==0.3.34
 
 # BACKUP inference client — loopback-only use
-httpx==0.27.2
+httpx==0.28.1

@@ -20,12 +20,13 @@ name = "airgap-agent"
 version = "0.0.1"
 description = "A truly air-gapped agent harness — no network access, local-only inference."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
 keywords = ["agent", "airgap", "offline", "local-inference", "llm"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Security",
@@ -36,10 +37,10 @@ dependencies = []
 
 [project.optional-dependencies]
 # PRIMARY runtime: in-process llama.cpp. Compiles from source at install.
-llamacpp = ["llama-cpp-python==0.3.2"]
+llamacpp = ["llama-cpp-python==0.3.34"]
 # BACKUP runtime: loopback-only HTTP client for a local Ollama server.
-ollama = ["httpx==0.27.2"]
-all = ["llama-cpp-python==0.3.2", "httpx==0.27.2"]
+ollama = ["httpx==0.28.1"]
+all = ["llama-cpp-python==0.3.34", "httpx==0.28.1"]
 dev = ["pytest==8.3.3"]
 
 [project.scripts]
