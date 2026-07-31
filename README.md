@@ -6,6 +6,14 @@ Architecturally inspired by [Hermes Agent](https://github.com/nousresearch/herme
 
 airgap-agent is an independent project — not affiliated with, endorsed by, or derived from Hermes Agent's source code. We share none of their code, icons, or branding; we only borrow ideas and reimplement them. See [NOTICE](NOTICE).
 
+> **Status: early scaffolding. Not a working agent yet.**
+>
+> The inference layer runs and the egress guard is tested. The agent loop, tool
+> dispatch, session state and sandbox described below **do not exist yet**, and
+> the llama.cpp backend and the container have **never been run**.
+> [`docs/VERIFIED.md`](docs/VERIFIED.md) records exactly what was executed, on
+> what hardware, and what was not. Do not rely on this for isolation today.
+
 ## Deploy
 
 Two supported paths: a **container** (recommended for real airgapped hosts — one artifact to carry across the gap) or a **direct host install** (best for development).
@@ -30,6 +38,18 @@ gunzip -c airgap-agent.tar.gz | docker load
 Full walkthrough, including `docker run` flags and sealed (weights-baked-in) builds: **[docs/AIRGAP.md](docs/AIRGAP.md)**.
 
 ### Option B — install on the host
+
+**Prerequisites for the `llamacpp` extra.** There is no prebuilt
+`llama-cpp-python` wheel for `aarch64`, so pip compiles it from source. On a
+Debian/Ubuntu host (including NVIDIA Jetson) install the toolchain first,
+otherwise the install fails while resolving build dependencies:
+
+```
+sudo apt-get install -y build-essential cmake
+```
+
+The `ollama` extra needs no compiler.
+
 
 One line from a checkout, using [uv](https://github.com/astral-sh/uv) (installs the `airgap-agent` command onto your PATH in its own isolated environment):
 
@@ -95,6 +115,21 @@ Piping a remote script into a shell is the exact pattern we removed from the Her
 
 We also don't publish to PyPI. If you'd rather install from an index, build the wheel yourself (`pip wheel .`) and host it wherever you already trust.
 
+## Environment variables
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `RUNTIME` | `llamacpp` | Which backend to load: `llamacpp` (primary) or `ollama` (backup). |
+| `MODEL_PATH` | none | Path to the GGUF file, for the llama.cpp backend. |
+| `OLLAMA_HOST` | `127.0.0.1` | Must be loopback. A non-loopback value is refused outright. |
+| `OLLAMA_PORT` | `11434` | Local Ollama port. |
+| `OLLAMA_MODEL` | none | Model tag to request from Ollama. |
+| `OLLAMA_THINK` | unset | Reasoning toggle. `0` sends `think: false`, so the token budget goes to the answer rather than a hidden scratchpad. `1` requests reasoning. Unset omits the field entirely. |
+
+On a reasoning model a small `max_tokens` can be consumed entirely by the
+hidden `thinking` field, leaving no answer. The backend raises in that case
+rather than returning an empty string, and names the remedy.
+
 ## Design goals
 
 - **No egress, ever.** The harness must be *incapable* of outbound network I/O — not merely configured to avoid it. Isolation is enforced structurally (no HTTP client is importable in the agent core, sandboxed subprocesses run with networking disabled) and is verified by tests.
@@ -147,7 +182,25 @@ pyproject.toml
 
 ## Status
 
-Early scaffolding: the inference layer, container, and isolation test exist; the agent loop and tool system are next. See `SECURITY.md` for the isolation model and `AGENTS.md` for contributor conventions.
+Early scaffolding.
+
+**Runs today:** the inference abstraction, the Ollama loopback backend, and the
+egress guard tests.
+**Does not exist yet:** the agent loop, tool dispatch, session state, sandbox.
+**Exists but never executed:** the llama.cpp backend, the container.
+
+See [`docs/VERIFIED.md`](docs/VERIFIED.md) for the verification record,
+`SECURITY.md` for the isolation model, and `AGENTS.md` for contributor
+conventions.
+
+Known gaps, tracked rather than hidden:
+
+- `read_only: true` in `docker-compose.yml` conflicts with Ollama's need for a
+  writable state directory.
+- The `curl | sh` Ollama install in the `Dockerfile` is unreliable on
+  `python:*-slim` images.
+- `.dockerignore` excludes `*.md`, which would break a `pip install .` in-image.
+- There is no CI, so none of the above is enforced automatically.
 
 ## License
 
