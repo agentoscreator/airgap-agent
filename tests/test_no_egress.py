@@ -18,6 +18,10 @@ import pytest
 _LOOPBACK = {"127.0.0.1", "::1", "localhost"}
 
 
+_REAL_SOCKET = socket.socket
+_REAL_CREATE_CONNECTION = socket.create_connection
+
+
 class EgressAttempt(AssertionError):
     """Raised when code under test tries to reach a non-loopback address."""
 
@@ -55,7 +59,9 @@ def block_external_egress(monkeypatch):
         host = _host_of(address)
         if host is not None and host not in _LOOPBACK:
             raise EgressAttempt(f"External egress attempt to {address!r}")
-        raise EgressAttempt(f"Unexpected create_connection to {address!r}")
+        # Loopback is the sanctioned Ollama path: hand off to the real
+        # network stack so the caller sees genuine connection semantics.
+        return _REAL_CREATE_CONNECTION(address, *args, **kwargs)
 
     monkeypatch.setattr(socket, "socket", GuardedSocket)
     monkeypatch.setattr(socket, "create_connection", _guarded_create_connection)
@@ -109,3 +115,42 @@ def test_agent_loop_never_egresses(block_external_egress):
     loop = AgentLoop.local_only()
     loop.run_once(prompt="hello, offline world")
     # Reaching here without EgressAttempt is the pass condition.
+
+
+def _closed_loopback_port() -> int:
+    """Return a loopback port that is almost certainly not listening."""
+    s = _REAL_SOCKET(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("127.0.0.1", 0))
+        return int(s.getsockname()[1])
+    finally:
+        s.close()
+
+
+def test_httpx_loopback_is_not_blocked(block_external_egress):
+    """Regression: httpcore reaches the network via socket.create_connection.
+
+    An earlier version of this guard raised EgressAttempt unconditionally
+    inside create_connection, which silently broke the sanctioned Ollama
+    backend while the suite still reported green.
+    """
+    httpx = pytest.importorskip("httpx")
+    with pytest.raises(httpx.ConnectError):
+        httpx.get(f"http://127.0.0.1:{_closed_loopback_port()}/", timeout=2)
+
+
+def test_httpx_external_is_blocked(block_external_egress):
+    """httpx must not be able to reach a non-loopback host."""
+    httpx = pytest.importorskip("httpx")
+    with pytest.raises(EgressAttempt):
+        httpx.get("http://93.184.216.34/", timeout=2)
+
+
+def test_raw_socket_connect_to_external_is_blocked(block_external_egress):
+    """The guard covers socket.connect(), not just create_connection."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        with pytest.raises(EgressAttempt):
+            s.connect(("93.184.216.34", 80))
+    finally:
+        s.close()
